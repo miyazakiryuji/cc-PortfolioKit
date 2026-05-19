@@ -25,8 +25,12 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
   - その内容から 1 ページの自己紹介サイト (portfolio.html) を自動生成
 
 ■ 覚えるコマンドは 2 つだけ
-  /cc-portfoliokit:init   … 最初の 1 回。氏名・職歴を対話でヒアリングして保存
-  /cc-portfoliokit:create … それ以降ずっと。HTML を作る or 編集する
+  /cc-portfoliokit:init    … 最初の 1 回。氏名・職歴を対話でヒアリングして保存
+  /cc-portfoliokit:create  … それ以降ずっと。HTML を作る or 編集する
+
+■ 補助のコマンドがもう 2 つ (覚えなくても困りません)
+  /cc-portfoliokit:cleanup … 手で Markdown を直したあとの整え役
+  /cc-portfoliokit:guide   … いまあなたが叩いたこれ。道案内
 ```
 
 ## Step 2: 現状を診断
@@ -110,6 +114,10 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
      → config.md / career/profile.md / career/work-history.md を
         メモ帳や VS Code で直接書き換えて、もう一度 /cc-portfoliokit:create
         詳しくは docs/手順書.md の「ステップ 5」を参照
+  4) 手で書き換えたあと「形が崩れていないか不安」になったら
+     → /cc-portfoliokit:cleanup
+        必須の見出しが欠けていないか、空のブロックが残っていないかを
+        1 件ずつ確認しながら整えてくれます。HTML には触りません。
 ```
 
 ## Step 4: 困ったときの逃げ先
