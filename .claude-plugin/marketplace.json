@@ -1,0 +1,25 @@
+{
+  "name": "cc-portfoliokit",
+  "owner": {
+    "name": "miyazakiryuji",
+    "url": "https://github.com/miyazakiryuji"
+  },
+  "metadata": {
+    "description": "非エンジニア向けポートフォリオ作成プラグイン (cc-PortfolioKit) を配布する単一プラグイン用マーケットプレース。コマンドは init / create の 2 本",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "cc-portfoliokit",
+      "source": "./",
+      "description": "`init` でフォルダ作成と氏名・キャリアの対話ヒアリング、`create` で portfolio.html の生成と編集を行う 2 コマンド構成のポートフォリオキット",
+      "version": "0.1.0",
+      "author": {
+        "name": "miyazakiryuji",
+        "url": "https://github.com/miyazakiryuji"
+      },
+      "category": "productivity",
+      "tags": ["portfolio", "html", "markdown", "career", "japanese"]
+    }
+  ]
+}

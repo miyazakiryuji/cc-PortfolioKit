@@ -1,0 +1,8 @@
+# Claude Code のセッションローカル設定 (個人環境ごと)
+.claude/
+
+# macOS
+.DS_Store
+
+# 動作確認で生成される成果物 (ユーザー側プロジェクトに置かれる想定)
+portfolio.html

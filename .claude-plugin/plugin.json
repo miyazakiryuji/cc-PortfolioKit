@@ -1,0 +1,12 @@
+{
+  "name": "cc-portfoliokit",
+  "version": "0.1.0",
+  "description": "非エンジニアでも使えるポートフォリオ作成キット。`init` (対話セットアップ・1 回だけ) と `create` (HTML 生成 / 編集メニュー) の 2 コマンドで、Markdown 入力から 1 ページ HTML ポートフォリオを生成する。",
+  "author": {
+    "name": "miyazakiryuji",
+    "url": "https://github.com/miyazakiryuji"
+  },
+  "repository": "https://github.com/miyazakiryuji/cc-PortfolioKit",
+  "license": "MIT",
+  "keywords": ["portfolio", "html", "markdown", "career", "japanese"]
+}
