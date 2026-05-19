@@ -24,9 +24,10 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
   - お名前 / 職歴を Markdown に書き込み
   - その内容から 1 ページの自己紹介サイト (portfolio.html) を自動生成
 
-■ 覚えるコマンドは 2 つだけ
-  /cc-portfoliokit:init    … 最初の 1 回。氏名・職歴を対話でヒアリングして保存
-  /cc-portfoliokit:create  … それ以降ずっと。HTML を作る or 編集する
+■ 覚えるコマンドは 3 つ (上から順に叩く流れです)
+  /cc-portfoliokit:init    … 最初の 1 回。ファイルとフォルダを用意してくれる
+  /cc-portfoliokit:hearing … 経歴 (本業 / 副業 / 活動) を対話で 1 件ずつ集める
+  /cc-portfoliokit:create  … そろった素材から HTML を生成する
 
 ■ 補助のコマンドがもう 2 つ (覚えなくても困りません)
   /cc-portfoliokit:cleanup … 手で Markdown を直したあとの整え役
@@ -42,12 +43,15 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
 - `./career/work-history.md`
 - `./portfolio.html`
 
+`./career/work-history.md` が存在する場合は、その中身に `## ` で始まる名称ブロック ── ファイル先頭の `# 職歴・副業・活動` タイトルは除く ── が 1 件以上あるかも `Read` で確認します。
+
 判定:
 
 - `INPUTS_FULL` = 3 つの素材 Markdown **すべて** が揃っている
 - `INPUTS_PARTIAL` = 1〜2 つの素材 Markdown が揃っている (= 中途半端)
 - `INPUTS_EMPTY` = 素材 Markdown が **1 つも** ない
 - `HAS_HTML` = `./portfolio.html` が存在する
+- `HAS_WORK_ENTRIES` = `./career/work-history.md` に `## 名称` ブロックが 1 件以上ある (= hearing が実行済み)
 
 ## Step 3: 状態別の案内 (4 ブランチ)
 
@@ -60,12 +64,19 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
   /cc-portfoliokit:init
 
 🎙️ このコマンドが何をしてくれるか
-  - 作業フォルダにファイル一式を生成
-  - 氏名・キャリア年数・職歴を 1 つずつ質問していく
-  - 答えた内容をその場で Markdown に保存
+  - 作業フォルダにファイル一式を用意してくれる
+  - 「アイコン画像を入れてね」「プロフィールを書いてね」と案内
+  - そのあとの流れ (hearing → create) を教えてくれる
 
 🕐 所要時間
-  3〜10 分くらい (職歴の数によって前後します)
+  1 分もかからない (ヒアリング無し、ファイル作って案内するだけ)
+
+なお、init のあとは…
+  1. ./assets/ にアイコン画像を 1 枚入れる
+  2. ./config.md と ./career/profile.md を開いてプロフィールを書く
+  3. /cc-portfoliokit:hearing で経歴を 1 件ずつ集める
+  4. /cc-portfoliokit:create で HTML を生成
+  …という流れになります。
 ```
 
 ### ブランチ B: `INPUTS_PARTIAL` (素材が一部だけ)
@@ -86,15 +97,39 @@ description: cc-PortfolioKit の道案内。いまの状況に合わせて「次
 
 ### ブランチ C: `INPUTS_FULL && !HAS_HTML` (素材は揃った、あとは HTML だけ)
 
+`HAS_WORK_ENTRIES` をさらに見て、2 つに分岐します。
+
+#### ブランチ C-1: `INPUTS_FULL && !HAS_HTML && !HAS_WORK_ENTRIES` (経歴がまだ空)
+
 ```
-■ いまの状況: 素材はある、あと HTML を作るだけ! 🚀
+■ いまの状況: ファイルは揃ったけど、経歴がまだ空っぽです
+
+次に打つコマンド:
+  /cc-portfoliokit:hearing
+
+🎙️ このコマンドが何をしてくれるか
+  - 本業 / 副業 / 活動 を対話で 1 件ずつ聞いてくれる
+  - 答えた内容を ./career/work-history.md に書き込む
+
+🕐 所要時間の目安
+  本業 1 社あたり 3〜5 分、副業や活動は 1〜2 分くらい。
+  途中でやめてもOK ── 書きたい分だけ書いて終わって大丈夫です。
+
+hearing が終わったら、もう一度 /cc-portfoliokit:guide を叩くと
+次は HTML 生成 (create) を案内します。
+```
+
+#### ブランチ C-2: `INPUTS_FULL && !HAS_HTML && HAS_WORK_ENTRIES` (経歴も入った)
+
+```
+■ いまの状況: 素材はぜんぶ揃った! あと HTML を作るだけ 🚀
 
 次に打つコマンド:
   /cc-portfoliokit:create
 
 🎙️ このコマンドが何をしてくれるか
   - 入力 Markdown を読み込み、portfolio.html を生成
-  - 何も聞かれずに完成
+  - 初回はテーマ方向性を一度だけ尋ねます (色や雰囲気を一緒に決める)
 
 完成後は portfolio.html をダブルクリックでブラウザに表示できます。
 ```
