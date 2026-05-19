@@ -6,19 +6,22 @@
 
 ## 1. 責務
 
-`create` は **ふだん使いのコマンド**。状態を自動判定して 3 つのモードに分岐する。
+`create` は **ふだん使いのコマンド**。状態を自動判定して 3 つのモードに分岐する。新仕様では `init` → (ユーザー手編集 + `hearing`) → `create` の流れになる。
 
 | 状態 | 進む先 | 何をする |
 |---|---|---|
-| 素材なし (`init` 未実行) | ブランチ A | `init` を促す案内のみ。書き換えない |
+| 素材なし (`init` 未実行 / ファイルが揃わない) | ブランチ A | `init` / `hearing` を促す案内のみ。書き換えない |
 | 素材あり / HTML 無し | ブランチ B | テーマ方向性ヒアリング → HTML 生成 |
 | 素材あり / HTML あり | ブランチ C | 編集メニュー (6 オプション) |
 
+> 経歴 0 件 (= `work-history.md` にエントリが無い) の状態でも `create` は HTML を生成します。経歴セクションが空のポートフォリオになるだけ。経歴を入れる案内は `guide` の方が丁寧 ── `guide` のブランチ C-1 (経歴 0 件分岐) を参照。
+
 設計の根本ルール:
 
-- **テンプレートを勝手に作らない**。素材は必ず `init` 経由で生成させる。
+- **テンプレートを勝手に作らない**。素材は必ず `init` 経由で生成させる。経歴のヒアリングは `hearing` 経由で。
 - **生成物は `portfolio.html` の 1 ファイルだけ**。それ以外は明示的指示があったときだけ書き換える。
 - **JavaScript / 外部 CSS / 外部フォントを使わない** (オフラインで表示できること)。
+- **ファイル分割について**: 実装プロンプトは `commands/create.md` (エントリポイント 115 行) と `commands/create-branch-b.md` (B フロー 313 行) と `commands/create-branch-c.md` (C メニュー 115 行) の 3 ファイルに分かれている。AI が読むときはエントリポイントから対応する付録を `Read` する。
 
 ---
 
@@ -36,13 +39,15 @@ INPUTS_READY = HAS_CONFIG && HAS_PROFILE && HAS_WORK
 
 ---
 
-## 3. ブランチ A: init 誘導
+## 3. ブランチ A: init / hearing 誘導
 
 責務は **案内のみ**。テンプレートを置かない、`Edit` も `Write` もしない。
 
 - 欠けているファイルを列挙
-- `/cc-portfoliokit:init` の実行を促す
+- 新仕様の流れ ── `/cc-portfoliokit:init` → `./assets/` に画像配置 → `config.md` / `profile.md` を手編集 → `/cc-portfoliokit:hearing` → `/cc-portfoliokit:create` ── を案内
 - それ以上は何もせず終了
+
+> `init` だけ実行済みで `hearing` 未実行 (= `work-history.md` がテンプレ初期状態のまま、エントリ無し) の場合も、`work-history.md` というファイル自体は存在するので `INPUTS_READY` は成立する → ブランチ B に進む。経歴 0 件の HTML が生成されるが、これは仕様内挙動。
 
 ---
 
@@ -171,9 +176,19 @@ B-5.   完了報告
 
 ## 8. 関連ファイル
 
-- 実装プロンプト: [`commands/create.md`](../../commands/create.md)
+- **実装プロンプト 3 ファイル (分割後)**:
+  - [`commands/create.md`](../../commands/create.md) ── エントリポイント (状態判定 + ブランチ A + Read 指示)
+  - [`commands/create-branch-b.md`](../../commands/create-branch-b.md) ── ブランチ B: 初回 HTML 生成フロー
+  - [`commands/create-branch-c.md`](../../commands/create-branch-c.md) ── ブランチ C: 編集メニュー
 - **デザイン担当スキル**: [`skills/portfolio-design/SKILL.md`](../../skills/portfolio-design/SKILL.md) ── HTML / CSS / 配色 / 職業別ラベル / XSS など、見た目の単一情報源
-- 連携コマンド: [`commands/init.md`](../../commands/init.md) ── 素材の準備担当
-- 補助コマンド: [`commands/guide.md`](../../commands/guide.md) ── 現状診断 + 道案内
+- 連携コマンド:
+  - [`commands/init.md`](../../commands/init.md) ── ファイル/フォルダの準備担当
+  - [`commands/hearing.md`](../../commands/hearing.md) ── 経歴ヒアリング担当
+  - [`commands/cleanup.md`](../../commands/cleanup.md) ── 手書き編集の整え担当
+  - [`commands/guide.md`](../../commands/guide.md) ── 現状診断 + 道案内
+- 連携仕様書:
+  - [`init-command.md`](./init-command.md) ── init の仕様
+  - [`hearing-command.md`](./hearing-command.md) ── hearing の仕様 (エントリポイント + 付録 2 ファイル)
+  - [`cleanup-command.md`](./cleanup-command.md) ── cleanup の仕様
 - 非エンジニア向けユーザー手順書: [`docs/手順書.md`](../手順書.md)
 - 入力テンプレート: [`templates/`](../../templates/)

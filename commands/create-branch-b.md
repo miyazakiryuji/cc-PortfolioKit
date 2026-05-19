@@ -37,11 +37,28 @@ description: create コマンドのブランチ B 実装 ── 初回 HTML 生�
 | `## アクセントカラー` | `accent_color` (HEX) |
 | `## 表示言語` | `language` (`ja` / `en` など) |
 | `## 顔写真のファイル名` | `photo` (相対パス) |
-| `## 連絡先` | 入れ子。`### メールアドレス` / `### GitHub` / `### X (Twitter)` / `### LinkedIn` / `### Website` をそれぞれ取得 |
+| `## 連絡先` | 入れ子。下表のサブ項目を全部試して、ブロックが存在するものだけ取得する |
 | `## 表示するセクションと順番` | 番号付きリストをそのままパースして `sections` の配列に |
 | `## 自己紹介 (About)` | 本文セクション |
 | `## スキル / Skills` | 本文セクション (任意) |
 | `## 学歴 / Education` | 本文セクション (任意) |
+
+**`## 連絡先` のサブ項目 (10 種類すべてに対応):**
+
+| サブ見出し | キー名 | 注意 |
+|---|---|---|
+| `### メールアドレス` | `email` | `mailto:` で出す |
+| `### GitHub` | `github` | URL またはハンドル |
+| `### Website` | `website` | URL |
+| `### X / Twitter` (旧 `### X (Twitter)` も後方互換で受ける) | `x` | URL またはハンドル |
+| `### Instagram` | `instagram` | URL またはハンドル |
+| `### LinkedIn` | `linkedin` | URL |
+| `### Facebook` | `facebook` | URL |
+| `### YouTube` | `youtube` | URL |
+| `### TikTok` | `tiktok` | URL またはハンドル |
+| `### note` | `note` | URL |
+
+`### X (Twitter)` という旧表記 (括弧付き) は **そのまま受ける** (後方互換)。新規生成では `### X / Twitter` を使う。値が空 / ブロックが存在しない / 値が `<!-- ... -->` のコメントのみ ── これらはすべて「無し」として扱い、HTML には出力しない。
 
 #### career/profile.md から取り出す項目
 
@@ -51,7 +68,7 @@ description: create コマンドのブランチ B 実装 ── 初回 HTML 生�
 | `## ふりがな` | `name_kana` (任意) |
 | `## 英語表記` | `name_en` (任意) |
 | `## 職業` | `profession` (本業の主な職業。HTML レンダリング時のラベル選択に使う) |
-| `## キャリア総年数` | `career_years` |
+| `## キャリア総年数` | `career_years` (任意。新仕様では init / hearing が聞かないので空のことが多い。あれば表示) |
 | `## 自己紹介 (短く)` | プロフィールカード下の短い bio (任意) |
 | `## 生年月日` | `birthday` (任意・拡張) |
 | `## 居住地` | `location` (任意・拡張) |
@@ -59,18 +76,27 @@ description: create コマンドのブランチ B 実装 ── 初回 HTML 生�
 
 #### career/work-history.md から取り出す項目
 
-- `## ` 行で全エントリに分割 (1 件 = 1 エントリ。名称は会社名・案件名・イベント名など)
+- `## ` 行で全エントリに分割 ── 1 件 = 1 エントリ、名称は会社名・案件名・イベント名など
 - 各エントリ内をさらに `### ` で分割し、以下を取り出す:
-  - `### 種別` → `type` (**本業 / 副業 / 活動** のいずれか。**省略されているエントリは本業として扱う** — 後方互換)
+  - `### 種別` → `type` (**本業 / 副業 / 活動** のいずれか。省略されているエントリは本業として扱う ── 後方互換)
   - `### 期間` → `period`
   - `### 役職` → `role`
-  - `### やったこと` → `tasks` (箇条書きを配列化)
-  - `### 使用技術` → `tech`
+  - `### 業務内容` → `tasks` (箇条書きを配列化)。本業で使う見出し
+  - `### やったこと` → `tasks` (箇条書きを配列化)。副業・活動で使う見出し。**本業に `### やったこと` が来た場合、または副業・活動に `### 業務内容` が来た場合も `tasks` に統合して扱う** (表記揺れ吸収)
+  - `### 全体の成果` → `overall_achievements` (箇条書きを配列化)。本業のみ。任意
+  - `### 使ったツール・スキル` → `tools`。**旧表記 `### 使用技術` も後方互換で受ける** (フィールド名は `tools` に統一)
   - `### 成果` → `achievements` (箇条書きを配列化)
+- **本業の `### プロジェクト: <PJ 名>` ブロック** ── 本業のみに現れる二段構造。`### ` の値が `プロジェクト:` で始まる場合は PJ ブロックとして扱う:
+  - `<PJ 名>` (見出しの `プロジェクト:` より後ろの文字列を `trim`) → `projects[].name`
+  - PJ ブロック内の `#### 使ったツール・スキル` → `projects[].tools` (任意)
+  - PJ ブロック内の `#### 成果` → `projects[].achievements` (箇条書きを配列化、任意)
+  - `projects[]` は本業エントリにのみ持たせる配列。副業・活動では空 or 未定義
 - 並び順は Markdown 上の順 (hearing で決めた順番)。種別の混在順は保持しつつ、レンダリング時に種別ごとにグループ化する
 - `### 〇〇` ブロックが存在しないフィールドは出力時に **その行ごと省略**
 
 > パースに失敗したファイルがあれば、ユーザーに **具体的なファイル名と原因** を伝えて中断してください。「## 見出しが見つからない」「期待した値が空」などは具体的に。空値で勝手に埋めないこと。
+>
+> **表記揺れ吸収のまとめ**: `### 使用技術` ↔ `### 使ったツール・スキル`、`### 業務内容` ↔ `### やったこと`、`### X (Twitter)` ↔ `### X / Twitter` ── これらは新旧どちらでも同じフィールドに格納する。新規生成は新表記を使う。
 
 ### B-1.5. テーマ方向性のヒアリング
 
@@ -245,15 +271,17 @@ description: create コマンドのブランチ B 実装 ── 初回 HTML 生�
 |---|---|
 | `name` / `name_kana` / `name_en` | `career/profile.md` |
 | `profession` | `career/profile.md` の `## 職業` |
-| `career_years` | `career/profile.md` の `## キャリア総年数` |
+| `career_years` | `career/profile.md` の `## キャリア総年数` (任意、新仕様では多くの場合空) |
 | `short_bio` / `birthday` / `location` / `languages` | `career/profile.md` (任意項目はあれば渡す) |
-| `entries[]` | `career/work-history.md` を `## 名称` で分割、`### サブ項目` から `{ name, type, period, role, tasks[], tech, achievements[] }` に整形した配列 |
+| `entries[]` | `career/work-history.md` を `## 名称` で分割、`### サブ項目` から `{ name, type, period, role, tasks[], tools, achievements[], overall_achievements[], projects[] }` に整形した配列。本業エントリは `overall_achievements` と `projects[]` を持つ可能性あり。副業・活動では `projects[]` は空配列または未定義 |
 | `site_title` / `tagline` / `theme_color` / `accent_color` / `language` | `config.md` (B-1.5 で書き換え済みなら最新値) |
 | `photo_path` | `config.md` の `## 顔写真のファイル名`。B-2 で「存在しない / 空」と判定された場合は `null` を渡す |
-| `contact` | `config.md` の `## 連絡先` の `###` サブ項目を `{ email, github, x, linkedin, website }` 形式で |
+| `contact` | `config.md` の `## 連絡先` の `###` サブ項目を `{ email, github, website, x, instagram, linkedin, facebook, youtube, tiktok, note }` 形式で。値の無いキーは省略 |
 | `sections` | `config.md` の `## 表示するセクションと順番` を配列化 |
 | `about_md` / `skills_md` / `education_md` | `config.md` の対応セクションの本文 (任意項目はあれば渡す) |
 | `today` | 現在日 (`YYYY-MM-DD`) |
+
+> **`entries[]` の `projects[]` 構造**: 各 PJ は `{ name, tools, achievements[] }` の形。`tools` は文字列 (任意)、`achievements[]` は箇条書き配列 (任意)。スキル側は本業エントリで `projects[].length > 0` のとき、PJ ごとに小見出しを付けて HTML レンダリングする。
 
 > 各値はすでに HTML エスケープ前の生の文字列で渡します。エスケープはスキル側の責務です。
 
