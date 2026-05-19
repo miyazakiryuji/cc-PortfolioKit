@@ -57,14 +57,18 @@ description: cc-PortfolioKit が生成する 1 ページ HTML ポートフォリ
 
 `sections` の配列順で `<section>` を出力します。配列に無いキーは出力しません。
 
+> **見出し階層 (重要)**: アクセシビリティのため、`<h1>` → `<h2>` → `<h3>` → `<h4>` の順を **飛ばさないこと**。`<header>` 内の `<h1>` (氏名) → 各 `<section>` の `<h2>` (Profile / About / Career など) → 経歴セクションのカテゴリ区分 (本業 / 副業 / 活動) は `<h3>` → 個々のエントリ (会社名 / 案件名) は `<h4>`。スクリーンリーダー読み上げ構造を壊さないため、勝手に飛ばしたりレベルを変えたりしない。
+>
+> **空セクションの扱い**: `sections[]` に名前が含まれていても、対応する素材が **すべて空** ── たとえば Contact で `email` / `github` / `x` / `linkedin` / `website` がいずれも空 ── のときは、その `<section>` ごと出力しない。「空の見出しだけが残る」のを避けるため。
+
 ```html
 <!doctype html>
-<html lang="{{language}}">
+<html lang="{{language}}">  <!-- §8.4 で BCP 47 検証済みの値だけ流す。不正なら "ja" にフォールバック -->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{site_title}}</title>
-  <style>/* §4 の CSS をインライン化 */</style>
+  <style>/* §4 の CSS をインライン化。§8.3 で HEX 検証済みの theme/accent を使う */</style>
 </head>
 <body>
   <header>
@@ -82,7 +86,12 @@ description: cc-PortfolioKit が生成する 1 ページ HTML ポートフォリ
         <dt>氏名</dt><dd>{{name}}<span class="kana">({{name_kana}})</span></dd>
         <dt>職業</dt><dd>{{profession}}</dd>
         <dt>キャリア</dt><dd>{{career_years}}</dd>
-        <!-- birthday / location / languages があれば出す。空なら省く -->
+        <!--
+          birthday / location / languages があれば出す。空 (フィールド自体が無い、または値が空) なら省く。
+          これらは Sensitive PII (誕生日 / 居住地 / 話せる言語) に該当しうるため、
+          profile.md に書かれていれば「ユーザーが掲載する意思を示した」とみなして出力する。
+          初期テンプレートには含めず、追加するときは profile.md のコメントで掲載される旨を案内している。
+        -->
       </dl>
     </section>
 
@@ -97,6 +106,7 @@ description: cc-PortfolioKit が生成する 1 ページ HTML ポートフォリ
         entries[] を type ("本業" / "副業" / "活動") でグループ化し、
         本業 → 副業 → 活動 の順で <h3> + <ol class="timeline"> を出力。
         該当エントリが 0 件のカテゴリは <h3> ごと出力しない。
+        見出し階層: h2 (Career) → h3 (本業/副業/活動) → h4 (個々のエントリ名)。飛ばさない。
       -->
       <h3>本業</h3>
       <ol class="timeline"><!-- type=本業 のエントリ --></ol>
@@ -278,14 +288,23 @@ a:hover { text-decoration: underline; }
 @media print {
   body { font-size: 11pt; }
   header, section { page-break-inside: avoid; }
+  .timeline-item { page-break-inside: avoid; break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
   a[href]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
+  /* mailto: のリンクは本文中に展開しない (印刷物にメールアドレスを平文で出さない) */
+  a[href^="mailto:"]::after { content: none; }
+  /* 内部アンカーも展開不要 */
+  a[href^="#"]::after { content: none; }
   .timeline { border-color: #999; }
   .timeline-item::before { background: #333; box-shadow: none; }
 }
 ```
 
 > 印刷時は背景色が消えても読めるよう、文字色とコントラストに頼った設計にすること。
+>
+> **改ページ制御**: `header` / `section` / `.timeline-item` の 3 階層で `page-break-inside: avoid` を効かせる。1 件の職歴エントリが途中で改ページされる事故を防ぐため、`.timeline-item` 単位の指定が必須。
+>
+> **`mailto:` リンクの本文展開抑制**: `a[href]::after` の URL 展開は紙 / PDF でリンク先を読める利便性のためだが、`mailto:your@example.com` のメールアドレスが平文で本文中に出るのは多くのユーザーの想定外。`a[href^="mailto:"]::after { content: none }` で抑制する。クリック可能なリンクとしては残るので、HTML 上での見え方は変わらない。
 
 ---
 
@@ -464,11 +483,19 @@ a:hover { text-decoration: underline; }
 - [ ] `<!doctype html>` で始まっている
 - [ ] `<title>` の中身が空でなく、`site_title` を含む
 - [ ] `<h1>` の中身が `name` を含む
+- [ ] `<html lang="...">` の値が §8.4 の BCP 47 形式 ── 不正なら `ja` ── に揃っている
 - [ ] `sections` に含まれる各セクションが対応する `<section>` として出力されている
 - [ ] `sections` に含まれない名前のセクションは出力されていない
+- [ ] **空セクション** ── たとえば Contact が全空 ── が `<section>` ごと省略されている (`<h2>` だけ残っていない)
 - [ ] `<script>` タグ / `on*=` 属性が含まれていない
+- [ ] CSS 内の `--theme` / `--accent` の値が §8.3 の `^#[0-9A-Fa-f]{3,6}$` 形式に合致している
+- [ ] すべての `href` が §8.2 の許可スキーム ── `https:` / `http:` / `mailto:` / `#` / `assets/` / `/` で始まる ── のいずれか
+- [ ] 外部 URL (`http://` / `https://`) の `<a>` に `target="_blank" rel="noopener noreferrer"` が両方付いている
+- [ ] `mailto:` の `<a>` には `target` / `rel` が付いていない
 - [ ] 顔写真が指定されていれば `<img>` が、無ければ顔写真要素は出力されていない
+- [ ] `<img>` の `src` が `assets/` で始まる相対パス、または除外される
 - [ ] 経歴は本業 → 副業 → 活動 の順で並び、空カテゴリは見出しごと省略されている
+- [ ] 見出し階層が `<h1>` → `<h2>` → `<h3>` → `<h4>` の順で飛んでいない
 
 ---
 
