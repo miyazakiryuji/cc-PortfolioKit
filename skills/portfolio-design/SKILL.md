@@ -116,11 +116,18 @@ description: cc-PortfolioKit が生成する 1 ページ HTML ポートフォリ
       <!-- education_md を Markdown→HTML 変換 -->
     </section>
 
+    <!--
+      Contact セクションは contact が全て空の場合は <section> ごと出力しない。
+      sections[] に "Contact" が含まれていても、空ならスキップする。
+      外部リンクは必ず target="_blank" rel="noopener noreferrer" を併記する (§8.2)。
+      mailto: には target="_blank" / rel は付けない。
+    -->
     <section id="contact">
       <h2>Contact</h2>
       <ul class="contact-list">
         <li>Email: <a href="mailto:{{contact.email}}">{{contact.email}}</a></li>
-        <!-- github / x / linkedin / website があれば出す。空文字なら省く -->
+        <li>GitHub: <a href="{{contact.github}}" target="_blank" rel="noopener noreferrer">{{contact.github}}</a></li>
+        <!-- x / linkedin / website も同じ形 (target="_blank" rel="noopener noreferrer")。空文字なら <li> ごと省く -->
       </ul>
     </section>
   </main>
@@ -234,6 +241,8 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 ```
+
+> **HTML 出力ルール**: 外部 URL ── `http://` / `https://` で始まる href ── を出力する `<a>` には、テンプレート上で必ず `target="_blank" rel="noopener noreferrer"` を併記する。`mailto:` / 内部アンカー (`#`) には付けない。ルールは §8.2 を参照。
 
 ### 4.5 レスポンシブ
 
@@ -382,16 +391,69 @@ a:hover { text-decoration: underline; }
 
 ## 8. XSS / 安全のためのルール (必須)
 
-- ユーザー入力のうち HTML に流し込むすべての値で `<`, `>`, `&`, `"`, `'` を必ずエスケープする
-  - `<` → `&lt;`
-  - `>` → `&gt;`
-  - `&` → `&amp;`
-  - `"` → `&quot;`
-  - `'` → `&#39;`
-- **`<script>` / `<style>` タグは出力 HTML に絶対に含めない** (このスキル自身が定義する `<style>` を除く)
+ユーザー入力は最終的に **3 つの異なるコンテキスト** に流れます。コンテキストごとに防御が違うので、**「とりあえず HTML エスケープ」では足りません**。順番に守ってください。
+
+### 8.1 HTML テキストコンテキスト
+
+ユーザー入力のうち HTML に流し込むすべての値で `<`, `>`, `&`, `"`, `'` を必ずエスケープする。
+
+| 元 | 置換後 |
+|---|---|
+| `<` | `&lt;` |
+| `>` | `&gt;` |
+| `&` | `&amp;` |
+| `"` | `&quot;` |
+| `'` | `&#39;` |
+
+加えて:
+
+- **`<script>` / `<style>` タグは出力 HTML に絶対に含めない** (このスキル自身が §4 で定義する `<style>` を除く)
 - **`on*=` 属性 (`onclick` 等) を出力 HTML に含めない**
-- `href` 属性に流し込む URL は、`javascript:` / `data:` で始まる値を弾く
-- `src` 属性に流し込む値も同様にホワイトリスト ── `assets/...` の相対パスのみ ── でフィルタする
+
+### 8.2 URL コンテキスト (`href` / `src`)
+
+**`href` に流し込むすべての URL に適用する**。対象は次の経路すべて:
+
+- `contact.email` / `contact.github` / `contact.x` / `contact.linkedin` / `contact.website`
+- §7 の Markdown 変換で `[テキスト](URL)` から生成される `<a href="URL">` の URL ── つまり `about_md` / `skills_md` / `education_md` / `entries[].tasks[]` / `entries[].achievements[]` などすべての自由記述に潜むインラインリンク
+- 将来追加されうるあらゆる `href` 出力箇所
+
+検証ルール:
+
+1. **スキームのブロックリスト**: `javascript:` / `data:` / `vbscript:` / `file:` で始まる値は弾く。比較は **小文字化 + 前後の空白除去** したうえで前方一致
+2. **許可スキーム**: `https://` / `http://` / `mailto:` / `#` で始まる、または `/` で始まる相対パス、または `assets/` で始まる相対パスのみ通す
+3. **マッチしない値は出力 HTML に含めない** ── リンク自体を出さない、もしくはテキストとして出す
+4. **`target="_blank"` を付ける外部リンクには必ず `rel="noopener noreferrer"` を併記する** (§3 / §4.4 のテンプレに反映済み)
+
+`src` 属性に流し込む値は同様にホワイトリスト ── `assets/` で始まる相対パスのみ ── でフィルタする。`http://` / `https://` / `data:` / 絶対パス / `..` を含むパスはすべて拒否。
+
+### 8.3 CSS コンテキスト (`theme_color` / `accent_color`)
+
+`theme_color` / `accent_color` は `<style>` 内の CSS 変数値 `--theme` / `--accent` に展開される。**HTML エスケープでは CSS インジェクションを防げない** ことに注意。
+
+検証ルール:
+
+1. 値を `^#[0-9A-Fa-f]{6}$` または `^#[0-9A-Fa-f]{3}$` の正規表現でマッチング
+2. マッチしない場合は **そのフィールドだけフォールバック値** を使う:
+   - `theme_color` 不正 → `#4F46E5`
+   - `accent_color` 不正 → `#F59E0B`
+3. フォールバックを使った場合、`create.md` 側に「`config.md` の HEX が不正だったのでデフォルトに戻した」旨を返し、ユーザーに通知してもらう
+4. **CSS 内に流す前に正規表現を通す** ── パース時のチェックを信用しない。`config.md` を手書きで編集された後、もしくは並行セッションで書き換えられたケースに備える
+
+> CSS インジェクションが成立すると、`} body{background:url(https://evil)` のような値で `<style>` ブロックを任意に書き換えられる。HTML エスケープでは値の `}` や `;` を防げない。CSS 変数値に流し込む値は **必ず形式検証** を通すこと。
+
+### 8.4 言語属性 (`lang`)
+
+`<html lang="...">` に流し込む `language` の値は BCP 47 形式 (`ja` / `en` / `ja-JP` / `zh-TW` など) を期待する。
+
+- **検証**: `^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$` にマッチするか確認
+- **マッチしないとき**: `ja` にフォールバックし、`create.md` 側に通知
+
+「日本語」のような自由テキストや、空文字、絵文字混入をそのまま `lang` に出すと invalid HTML になる。
+
+### 8.5 適用順序
+
+`create.md` から渡された値は **常にこの §8 のルールを最初に通してから** §3 のテンプレートに埋め込むこと。「`create` 側で検証されているはず」という前提は持たない ── ファイルが並行セッションや手書き編集で変わっている可能性があるため、スキル側で **必ず自前のガード** を入れる。
 
 ---
 
